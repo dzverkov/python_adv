@@ -1,6 +1,8 @@
 import yaml
+import json
 from argparse import ArgumentParser
 import socket
+from datetime import datetime
 
 parser = ArgumentParser()
 
@@ -30,8 +32,18 @@ try:
     sock.connect((host, port))
     print('Client was started.')
 
-    data = input("Enter message:")
-    sock.send(data.encode())
+    action = input('Enter action')
+    data = input('Enter message:')
+
+    request = {
+        'action': action,
+        'time': datetime.now().timestamp(),
+        'date': data
+    }
+
+    str_request = json.dump(request)
+
+    sock.send(str_request.encode())
 
     print(f'Client send message: {data}')
 
