@@ -1,5 +1,5 @@
-from .controllers import get_echo
+from .controllers import send_message
 
 actionnames = [
-    {'action': 'echo', 'controller': get_echo}
+    {'action': 'send', 'controller': send_message}
 ]

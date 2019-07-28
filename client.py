@@ -32,23 +32,23 @@ try:
     sock.connect((host, port))
     print('Client was started.')
 
-    action = input('Enter action')
-    data = input('Enter message:')
+    action = input('Enter action: ')
+    data = input('Enter message: ')
 
     request = {
         'action': action,
         'time': datetime.now().timestamp(),
-        'date': data
+        'data': data
     }
 
-    str_request = json.dump(request)
+    str_request = json.dumps(request)
 
     sock.send(str_request.encode())
 
-    print(f'Client send message: {data}')
+    print(f'Client send data: {data}')
 
-    b_req = sock.recv(buffer_size)
-    print(f'Server sends message: {b_req.decode()}')
+    b_response = sock.recv(buffer_size)
+    print(f'Server send data: {b_response.decode()}')
 
 except KeyboardInterrupt:
     print('Client shutdown')
