@@ -2,6 +2,7 @@ import yaml
 from argparse import ArgumentParser
 import socket
 import json
+import logging
 
 from actions import resolve
 from protocol import validate_request, make_response
@@ -26,6 +27,15 @@ if args.config:
         file_config = yaml.load(f, Loader=yaml.Loader)
         config.update(file_config)
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('main.log'),
+        logging.StreamHandler()
+    ]
+)
+
 host, port = config.get('host'), config.get('port')
 max_clients = config.get('max_clients')
 buffer_size = config.get('buffer_size')
@@ -35,11 +45,11 @@ try:
     sock.bind((host, port))
     sock.listen(max_clients)
 
-    print(f'Server started with {host}:{port}')
+    logging.info( f'Server started with {host}:{port}')
 
     while True:
         client, cl_adr = sock.accept()
-        print(f'Client was detected {cl_adr[0]}:{cl_adr[1]}')
+        logging.info(f'Client was detected {cl_adr[0]}:{cl_adr[1]}')
 
         b_req = client.recv(buffer_size)
 
@@ -50,16 +60,16 @@ try:
             controller = resolve(action_name)
             if controller:
                 try:
-                    print(f'Client send valid request {request}')
+                    logging.info(f'Client send valid request {request}')
                     response = controller(request)
                 except Exception as err:
-                    print(f'Internal server error {err}')
+                    logging.critical(f'Internal server error {err}')
                     response = make_response(request, 500, 'Internal server error')
             else:
-                print(f'Controller with action name {action_name} does not exists')
+                logging.error(f'Controller with action name {action_name} does not exists')
                 response = make_response(request, 404, 'Wrong request')
         else:
-            print(f'Client send invalid request {request}')
+            logging.error(f'Client send invalid request {request}')
             response = make_response(request, 404, 'Wrong request')
 
         str_response = json.dumps(response)
