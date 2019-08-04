@@ -3,9 +3,9 @@ from argparse import ArgumentParser
 import socket
 import json
 import logging
+import select
 
-from actions import resolve
-from protocol import validate_request, make_response
+from handlers import handle_default_request
 
 parser = ArgumentParser()
 
@@ -36,46 +36,46 @@ logging.basicConfig(
     ]
 )
 
+requests = []
+connections = []
+
 host, port = config.get('host'), config.get('port')
 max_clients = config.get('max_clients')
 buffer_size = config.get('buffer_size')
+
 try:
 
     sock = socket.socket()
     sock.bind((host, port))
+    sock.setblocking(False)
+    sock.settimeout(0)
     sock.listen(max_clients)
 
-    logging.info( f'Server started with {host}:{port}')
+    logging.info(f'Server started with {host}:{port}')
 
     while True:
-        client, cl_adr = sock.accept()
-        logging.info(f'Client was detected {cl_adr[0]}:{cl_adr[1]}')
+        try:
+            client, cl_adr = sock.accept()
+            connections.append(client)
+            logging.info(f'Client was detected {cl_adr[0]}:{cl_adr[1]}')
+        except:
+            pass
 
-        b_req = client.recv(buffer_size)
+        if connections:
+            rlist, wlist, xlist = select.select(
+                connections, connections, connections, 0
+            )
 
-        request = json.loads(b_req.decode())
+            for read_client in rlist:
+                bytes_request = read_client.recv(buffer_size)
+                requests.append(bytes_request)
 
-        if validate_request(request):
-            action_name = request.get('action')
-            controller = resolve(action_name)
-            if controller:
-                try:
-                    logging.info(f'Client send valid request {request}')
-                    response = controller(request)
-                except Exception as err:
-                    logging.critical(f'Internal server error {err}')
-                    response = make_response(request, 500, 'Internal server error')
-            else:
-                logging.error(f'Controller with action name {action_name} does not exists')
-                response = make_response(request, 404, 'Wrong request')
-        else:
-            logging.error(f'Client send invalid request {request}')
-            response = make_response(request, 404, 'Wrong request')
+            if requests:
+                bytes_request = requests.pop()
+                bytes_response = handle_default_request(bytes_request)
 
-        str_response = json.dumps(response)
-        client.send(str_response.encode())
-
-        client.close()
+                for write_client in wlist:
+                    write_client.send(bytes_response)
 
 except KeyboardInterrupt:
-    print('Server shutdown')
+    print('Server shutdown.')
