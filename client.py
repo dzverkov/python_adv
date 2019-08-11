@@ -31,11 +31,6 @@ parser.add_argument(
     '-c', '--config', type=str, required=False, help='Sets config file path'
 )
 
-# parser.add_argument(
-#     '-m', '--mode', type=str, required=False, default=WRITE_MODE,
-#     help='Sets client mode'
-# )
-
 args = parser.parse_args()
 
 config = {
