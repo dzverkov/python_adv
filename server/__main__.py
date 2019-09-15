@@ -4,8 +4,25 @@ import socket
 import json
 import logging
 import select
+import threading
 
 from handlers import handle_default_request
+
+def read(sock, connections, requests, buffersize):
+    try:
+        bytes_request = sock.recv(buffersize)
+    except Exception:
+        connections.remove(sock)
+    else:
+        requests.append(bytes_request)
+
+
+def write(sock, connections, response):
+    try:
+        sock.send(response)
+    except Exception:
+        connections.remove(sock)
+
 
 parser = ArgumentParser()
 
@@ -67,15 +84,22 @@ try:
             )
 
             for read_client in rlist:
-                bytes_request = read_client.recv(buffer_size)
-                requests.append(bytes_request)
+                read_thread = threading.Thread(
+                    target=read,
+                    args=(read_client, connections, requests, buffer_size)
+                )
+                read_thread.start()
 
             if requests:
                 bytes_request = requests.pop()
                 bytes_response = handle_default_request(bytes_request)
 
                 for write_client in wlist:
-                    write_client.send(bytes_response)
+                    write_thread = threading.Thread(
+                        target=write,
+                        args=(write_client, connections, bytes_response)
+                    )
+                    write_thread.start()
 
 except KeyboardInterrupt:
     print('Server shutdown.')
